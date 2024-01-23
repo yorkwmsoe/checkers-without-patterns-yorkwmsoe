@@ -19,12 +19,30 @@ public class Piece {
      */
     private int x, y;
     private final Ellipse ellipse;
+    private final Ellipse crown;
+
+    private boolean king;
 
     public Piece(Type type, int x, int y) {
         this.type = type;
         this.x = x;
         this.y = y;
         ellipse = createEllipse();
+        crown = createEllipse();
+        crown.setVisible(false);
+        this.king = false;
+        setActive(false);
+        reposition();
+        BoardController.getSquare(x,y).placePiece(this);
+    }
+
+    public Piece(Type type, int x, int y, boolean king) {
+        this.type = type;
+        this.x = x;
+        this.y = y;
+        ellipse = createEllipse();
+        crown = createEllipse();
+        this.king = king;
         setActive(false);
         reposition();
         BoardController.getSquare(x,y).placePiece(this);
@@ -57,8 +75,14 @@ public class Piece {
     }
 
     private void reposition() {
-        ellipse.setLayoutX(x* BoardController.SQUARE_SIZE + BoardController.SQUARE_SIZE/2);
-        ellipse.setLayoutY(y* BoardController.SQUARE_SIZE + BoardController.SQUARE_SIZE/2);
+        double layoutX = this.x * BoardController.SQUARE_SIZE + BoardController.SQUARE_SIZE/2;
+        double layoutY = this.y * BoardController.SQUARE_SIZE + BoardController.SQUARE_SIZE/2;
+        ellipse.setLayoutX(layoutX);
+        ellipse.setLayoutY(layoutY);
+        if (king) {
+            crown.setLayoutX(layoutX);
+            crown.setLayoutY(layoutY - 10);
+        }
     }
 
     private void trySetActive() {
@@ -68,8 +92,10 @@ public class Piece {
     public void setActive(boolean isActive) {
         if(isActive) {
             ellipse.setStrokeWidth(3);
+            crown.setStrokeWidth(3);
         } else {
             ellipse.setStrokeWidth(1);
+            crown.setStrokeWidth(1);
         }
     }
 
@@ -110,10 +136,16 @@ public class Piece {
         placeOnSquare(square);
         BoardController.switchTurns();
         setActive(false);
-
         if(type.equals(Type.BLACK) && y == 0) {
-            BoardController.setMessage("Kings are not yet implemented. Sorry!");
+            king = true;
+            crown.setVisible(true);
+            reposition();
+        } else if (type.equals(Type.RED) && y == BoardController.BOARD_WIDTH - 1) {
+            king = true;
+            crown.setVisible(true);
+            reposition();
         }
+
     }
 
     private void placeOnSquare(Square square) {
@@ -148,6 +180,7 @@ public class Piece {
     public void removeSelf() {
         BoardController.getSquare(x,y).removePiece();
         BoardController.removeChild(ellipse);
+        BoardController.removeChild(crown);
     }
 
     /**
@@ -157,11 +190,13 @@ public class Piece {
      */
     public boolean isValidOrdinaryMove(Square square) {
         if(type.equals(Type.BLACK)) {
-            return (square.getY() == y - 1 &&
-                    Math.abs(square.getX()-x) == 1);
+            return Math.abs(square.getX()-x) == 1 &&
+                    square.getY() == y - 1 ||
+                    (king && Math.abs(square.getY()-y) == 1);
         } else if(type.equals(Type.RED)){
-            return (square.getY() == y + 1 &&
-                    Math.abs(square.getX()-x) == 1);
+            return Math.abs(square.getX()-x) == 1 &&
+                    square.getY() == y + 1 ||
+                    (king && Math.abs(square.getY()-y) == 1);
         } else {
             throw new IllegalStateException("This piece has an unknown type:"+type);
         }
@@ -188,18 +223,20 @@ public class Piece {
      */
     public Piece getCapturedPiece(Square square) {
         if(type.equals(Type.BLACK)) {
-            if (!((square.getY() == y - 2 &&
-                    Math.abs(square.getX()-x) == 2))) {
-                return null;
-            } else {
+            if (Math.abs(square.getX()-x) == 2 &&
+                    (square.getY() == y - 2 ||
+                    (king && Math.abs(square.getY()-y) == 2))) {
                 return getMiddlePiece(square);
+            } else {
+                return null;
             }
         } else if(type.equals(Type.RED)){
-            if (!((square.getY() == y + 2 &&
-                    Math.abs(square.getX()-x) == 2))) {
-                return null;
-            } else {
+            if (Math.abs(square.getX()-x) == 2 &&
+                    (square.getY() == y + 2 ||
+                    (king && Math.abs(square.getY()-y) == 2))) {
                 return getMiddlePiece(square);
+            } else {
+                return null;
             }
         } else {
             throw new IllegalStateException("This piece has an unknown type:"+type);
