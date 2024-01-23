@@ -1,3 +1,5 @@
+//Billy York, SWE 2410-111
+
 package checkers;
 
 import javafx.scene.paint.Color;
